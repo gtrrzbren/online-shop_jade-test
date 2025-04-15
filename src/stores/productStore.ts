@@ -1,57 +1,69 @@
 import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
 import { getProducts, getProductDetails } from '../services/api';
 import type { Product, LoadingState } from '../types';
 
-export const useProductStore = defineStore('product', {
-  state: () => ({
-    products: [] as Product[],
-    currentProduct: null as Product | null,
-    productsLoadingState: 'idle' as LoadingState,
-    productDetailsLoadingState: 'idle' as LoadingState,
-    error: null as string | null,
-  }),
+// Usando la sintaxis de setup
+export const useProductStore = defineStore('product', () => {
+  // Estado con ref() y reactive()
+  const products = ref<Product[]>([]);
+  const currentProduct = ref<Product | null>(null);
+  const productsLoadingState = ref<LoadingState>('idle');
+  const productDetailsLoadingState = ref<LoadingState>('idle');
+  const error = ref<string | null>(null);
   
-  getters: {
-    getProductById: (state) => (id: number) => {
-      return state.products.find(product => product.id === id);
-    },
-    isProductsLoading: (state) => state.productsLoadingState === 'loading',
-    isProductDetailsLoading: (state) => state.productDetailsLoadingState === 'loading',
-  },
+  // Getters
+  const getProductById = (id: number) => {
+    return products.value.find(product => product.id === id);
+  };
   
-  actions: {
-    async fetchProducts() {
-      this.productsLoadingState = 'loading';
-      this.error = null;
-      
-      try {
-        const products = await getProducts();
-        this.products = products;
-        this.productsLoadingState = 'success';
-      } catch (error) {
-        this.productsLoadingState = 'error';
-        this.error = 'Error al cargar los productos';
-        console.error('Error in fetchProducts:', error);
-      }
-    },
+  const isProductsLoading = computed(() => productsLoadingState.value === 'loading');
+  const isProductDetailsLoading = computed(() => productDetailsLoadingState.value === 'loading');
+  
+  // Acciones
+  async function fetchProducts() {
+    productsLoadingState.value = 'loading';
+    error.value = null;
     
-    async fetchProductDetails(id: number) {
-      this.productDetailsLoadingState = 'loading';
-      this.error = null;
-      
-      try {
-        const product = await getProductDetails(id);
-        this.currentProduct = product;
-        this.productDetailsLoadingState = 'success';
-      } catch (error) {
-        this.productDetailsLoadingState = 'error';
-        this.error = `Error al cargar los detalles del producto ${id}`;
-        console.error('Error in fetchProductDetails:', error);
-      }
-    },
-    
-    clearCurrentProduct() {
-      this.currentProduct = null;
+    try {
+      const fetchedProducts = await getProducts();
+      products.value = fetchedProducts;
+      productsLoadingState.value = 'success';
+    } catch (err) {
+      productsLoadingState.value = 'error';
+      error.value = 'Error al cargar los productos';
+      console.error('Error in fetchProducts:', err);
     }
-  },
+  }
+  
+  async function fetchProductDetails(id: number) {
+    productDetailsLoadingState.value = 'loading';
+    error.value = null;
+    
+    try {
+      const product = await getProductDetails(id);
+      currentProduct.value = product;
+      productDetailsLoadingState.value = 'success';
+    } catch (err) {
+      productDetailsLoadingState.value = 'error';
+      error.value = `Error al cargar los detalles del producto ${id}`;
+      console.error('Error in fetchProductDetails:', err);
+    }
+  }
+  
+  function clearCurrentProduct() {
+    currentProduct.value = null;
+  }
+  
+  return { 
+    products, 
+    currentProduct, 
+    error, 
+    getProductById, 
+    isProductsLoading, 
+    isProductDetailsLoading, 
+    fetchProducts, 
+    fetchProductDetails, 
+    clearCurrentProduct 
+  };
 });
